@@ -1,0 +1,9 @@
+stocks:
+  - symbol: "IQQH.DE" # iShares
+    count: 2.267615
+    price: 25.00
+  - symbol: "VNA.DE" # Vonovia
+    count: 4
+    price: 89.80
+    provision: 5.90
+    fee: 2.84
