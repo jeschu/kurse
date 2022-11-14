@@ -2,6 +2,8 @@ package main
 
 import (
 	"io/ioutil"
+	"os"
+	"path"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -37,5 +39,17 @@ func readDepot(filename string) (stocks map[string]Stock, param string, err erro
 		symbols = append(symbols, stock.Symbol)
 	}
 	param = strings.Join(symbols, ",")
+	return
+}
+
+func findDepot() (filename string, err error) {
+	var ucd string
+	if ucd, err = os.UserConfigDir(); err != nil {
+		if _, err = os.Stat("depot.yml"); os.IsNotExist(err) {
+			return
+		}
+	}
+	filename = path.Join(ucd, "kurse", "depot.yml")
+	_, err = os.Stat(filename)
 	return
 }
