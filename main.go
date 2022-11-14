@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"time"
+	"golang.org/x/text/message"
+    "golang.org/x/text/language"
 )
 
 func main() {
@@ -17,6 +19,7 @@ func main() {
 		stocks map[string]Stock
 		param  string
 	)
+	p := message.NewPrinter(language.German)
 
 	if stocks, param, err = readDepot("depot.yml"); err != nil {
 		log.Fatal(err)
@@ -41,26 +44,26 @@ func main() {
 	buySum := float64(0)
 	for symbol, stock := range stocks {
 		result, ok := results[symbol]
-		fmt.Printf("%s\n", symbol)
+		p.Printf("%s\n", symbol)
 		if ok {
-			fmt.Printf("    %s (%s)\n", result.LongName, result.ShortName)
-			fmt.Printf("    Kurs: %10.2f %s x %f\n", result.RegularMarketPrice, result.Currency, stock.Count)
+			p.Printf("    %s (%s)\n", result.LongName, result.ShortName)
+			p.Printf("    Kurs: %10.2f %s x %f\n", result.RegularMarketPrice, result.Currency, stock.Count)
 			value := stock.Count * result.RegularMarketPrice
-			fmt.Printf("    Wert: %10.2f %s\n", value, result.Currency)
+			p.Printf("    Wert: %10.2f %s\n", value, result.Currency)
 			buy := stock.Price + stock.Provision + stock.Fee
 			fmt.Printf("    Kauf: %10.2f %s (%.2fx%.2f=%.2f + %.2f + %.2f)\n", buy, result.Currency,
 				stock.Count, stock.Price/stock.Count, stock.Price, stock.Provision, stock.Fee)
 			guvV := value - buy
 			guvP := (value / buy * 100) - 100
-			fmt.Printf("          %+10.2f %s (%+.2f%%)\n", guvV, result.Currency, guvP)
+			p.Printf("          %+10.2f %s (%+.2f%%)\n", guvV, result.Currency, guvP)
 
 			valSum += value
 			buySum += buy
 		}
 	}
-	fmt.Println("Summe:")
-	fmt.Printf("    Wert: %10.2f %s\n", valSum, "EUR")
-	fmt.Printf("    Kauf: %10.2f %s\n", buySum, "EUR")
-	fmt.Printf("          %+10.2f %s (%+.2f%%)\n", valSum-buySum, "EUR", (valSum/buySum*100)-100)
+	p.Println("Summe:")
+	p.Printf("    Wert: %10.2f %s\n", valSum, "EUR")
+	p.Printf("    Kauf: %10.2f %s\n", buySum, "EUR")
+	p.Printf("          %+10.2f %s (%+.2f%%)\n", valSum-buySum, "EUR", (valSum/buySum*100)-100)
 
 }
