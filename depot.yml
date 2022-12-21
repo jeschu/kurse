@@ -1,9 +1,7 @@
 stocks:
-  - symbol: "IQQH.DE" # iShares
-    count: 2.267615
-    price: 25.00
-  - symbol: "VNA.DE" # Vonovia
-    count: 4
-    price: 89.80
-    provision: 5.90
-    fee: 2.84
+  - symbol: "VWRD.L" # Vanguard FTSE All-World UCITS ETF
+    orders:
+      - date: 2023-01-02
+        count: 0.25
+        price: 25.00
+

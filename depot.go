@@ -1,10 +1,10 @@
 package main
 
 import (
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v2"
 )
@@ -14,11 +14,16 @@ type Depot struct {
 }
 
 type Stock struct {
-	Symbol    string  `yaml:"symbol" json:"symbol"`
-	Count     float64 `yaml:"count" json:"count"`
-	Price     float64 `yaml:"price" json:"price"`
-	Provision float64 `yaml:"provision" json:"provision"`
-	Fee       float64 `yaml:"fee" json:"fee"`
+	Symbol string  `yaml:"symbol" json:"symbol"`
+	Orders []Order `yaml:"orders" json:"orders"`
+}
+
+type Order struct {
+	Date      time.Time `yaml:"date" json:"date"`
+	Count     float64   `yaml:"count" json:"count"`
+	Price     float64   `yaml:"price" json:"price"`
+	Provision float64   `yaml:"provision" json:"provision"`
+	Fee       float64   `yaml:"fee" json:"fee"`
 }
 
 func readDepot(filename string) (stocks map[string]Stock, param string, err error) {
@@ -26,7 +31,7 @@ func readDepot(filename string) (stocks map[string]Stock, param string, err erro
 		yml   []byte
 		depot = Depot{}
 	)
-	if yml, err = ioutil.ReadFile(filename); err != nil {
+	if yml, err = os.ReadFile(filename); err != nil {
 		return
 	}
 	if err = yaml.Unmarshal(yml, &depot); err != nil {
@@ -43,13 +48,16 @@ func readDepot(filename string) (stocks map[string]Stock, param string, err erro
 }
 
 func findDepot() (filename string, err error) {
-	var ucd string
-	if ucd, err = os.UserConfigDir(); err != nil {
-		if _, err = os.Stat("depot.yml"); os.IsNotExist(err) {
+	var dir string
+	if dir, err = os.UserConfigDir(); err == nil {
+		filename = path.Join(dir, "kurse", "depot.yml")
+		if _, err = os.Stat(filename); err == nil {
 			return
 		}
 	}
-	filename = path.Join(ucd, "kurse", "depot.yml")
-	_, err = os.Stat(filename)
+	if dir, err = os.Getwd(); err == nil {
+		filename = path.Join(dir, "depot.yml")
+		_, err = os.Stat(filename)
+	}
 	return
 }
