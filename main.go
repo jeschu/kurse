@@ -5,6 +5,7 @@ import (
 	"kurse/support"
 	"log"
 	"net/http"
+	"sort"
 	"sync"
 	"time"
 
@@ -61,9 +62,15 @@ func main() {
 	}()
 	wg.Wait()
 
+	symbols := make([]string, 0, len(stocks))
+	for symbol := range stocks {
+		symbols = append(symbols, symbol)
+	}
+	sort.Strings(symbols)
 	valSum := float64(0)
 	buySum := float64(0)
-	for symbol, stock := range stocks {
+	for _, symbol := range symbols {
+		stock := stocks[symbol]
 		result, ok := results[symbol]
 		if ok {
 			var (
@@ -73,28 +80,31 @@ func main() {
 				fee       float64 = 0
 				buy       float64 = 0
 			)
-			for _, order := range stock.Orders {
-				count += order.Count
-				price += order.Price
-				provision += order.Provision
-				fee += order.Fee
-				buy += (order.Price + order.Provision + order.Fee)
-			}
-			out.Printf("%s (%s)\n", result.LongName, result.ShortName)
-			out.Printf("    Kurs: %10.2f %s x %f\n", result.RegularMarketPrice, result.Currency, count)
-			value := count * result.RegularMarketPrice
-			out.Printf("    Wert: %10.2f %s\n", value, result.Currency)
-			out.Printf("    Kauf: %10.2f %s (%.2fx%.2f=%.2f + %.2f + %.2f)\n", buy, result.Currency,
-				count, price/count, price, provision, fee)
-			guvV := value - buy
-			guvP := (value / buy * 100) - 100
-			out.Printf("     GuV: %+10.2f %s (%+.2f%%)\n", guvV, result.Currency, guvP)
-			var rate float64 = 1.0
+
+			var rate = 1.0
 			currency, cok := rates.Data[result.Currency]
 			if cok {
 				rate = 1.0 / currency
 			}
 
+			for _, order := range stock.Orders {
+				count += order.Count
+				price += order.Price
+				provision += order.Provision
+				fee += order.Fee
+				buy += order.Price + order.Provision + order.Fee
+			}
+			out.Printf("%s (%s)\n", result.LongName, result.ShortName)
+			value := count * result.RegularMarketPrice
+			out.Printf("    Wert: %10.2f %s = %10.2f %s x %f\n", value, result.Currency, result.RegularMarketPrice, result.Currency, count)
+			eurValue := value * rate
+			if rate != 1.0 {
+				out.Printf("          %10.2f EUR = %10.2f EUR x %f\n", eurValue, result.RegularMarketPrice*rate, count)
+			}
+			out.Printf("    Kauf: %10.2f EUR (%.2fx%.2f=%.2f + %.2f + %.2f)\n", buy, count, price/count, price, provision, fee)
+			guvV := eurValue - buy
+			guvP := (eurValue / buy * 100) - 100
+			out.Printf("     GuV: %+10.2f EUR (%+.2f%%)\n", guvV, guvP)
 			valSum += value * rate
 			buySum += buy * rate
 		}

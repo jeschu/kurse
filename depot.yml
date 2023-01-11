@@ -1,7 +1,0 @@
-stocks:
-  - symbol: "VWRD.L" # Vanguard FTSE All-World UCITS ETF
-    orders:
-      - date: 2023-01-02
-        count: 0.25
-        price: 25.00
-
