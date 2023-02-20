@@ -1,0 +1,45 @@
+name: Go
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.20.1
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test -v ./...
+
+  dist:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.20.1
+
+      - name: Dist
+        run: |
+          rm -rf dist
+          GOOS='darwin' GOARCH='amd64' go build -x -v -a -o 'dist/darwin/amd64/kurse' .
+          GOOS='linux'  GOARCH='amd64' go build -x -v -a -o 'dist/linux/amd64/kurse'  .
+          GOOS='linux'  GOARCH='arm'   go build -x -v -a -o 'dist/linux/arm/kurse'    .
+          GOOS='linux'  GOARCH='arm64' go build -x -v -a -o 'dist/linux/arm64/kurse'  .
+          ls -hl dist/*
