@@ -1,0 +1,37 @@
+= Kurse
+
+Berechnet den aktuellen Wert gekaufter Fonds, Aktien und ETFs.
+
+== Depot
+
+Das eigene Depot wird in einer yaml-Datei konfiguriert.
+Speicherort ist `{os.UserConfigDir()}/kurse/depot.yaml`.
+Unter MacOS ist das dann `'~/Library/Application Support/kurse/depot.yml'`.
+
+=== Format der Depot-Konfiguration
+
+[source,yaml]
+----
+stocks:
+  - symbol: "{symbol1}"  # <1>
+    orders:               # <2>
+      - date: YYYY-MM-DD  # <3>
+        count: 0.123456   # <4>
+        price: 12.34      # <5>
+        provision: 1.23   # <6>
+        fee: 1.23         # <7>
+      - ...
+  - symbol: "{symbol2}"
+    orders:
+      - ...
+----
+<1> `symbol` +
+    Die aktuellen Kurse und Informationen werden von https://query1.finance.yahoo.com/v7/finance/quote?symbols=\{symbol1},\{symbol2},...[finance.yahoo.com] abgerufen. +
+    Umrechnungskurse werden von https://api.freecurrencyapi.com[api.freecurrencyapi.com] geholt.
+<2> `orders` - Liste der Käufe
+<3> `date` - Kaufdatum
+<4> `count` - Anzahl der gekauften Anteile
+<5> `price` - Preis aller Anteile
+<6> `provision` - Provision (optional)
+<7> `fee` - Gebühren (optional)
+
