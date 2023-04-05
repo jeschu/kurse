@@ -15,3 +15,6 @@ dist: test clean
 	GOOS='linux'   GOARCH='arm'   go build -a -o 'dist/linux-arm-kurse'     .
 	GOOS='linux'   GOARCH='arm64' go build -a -o 'dist/linux-arm64-kurse'   .
 	GOOS='windows' GOARCH='arm64' go build -a -o 'dist/windows-arm64-kurse'  .
+
+edit:
+	code '/Users/jens/Library/Application Support/kurse/depot.yml'
