@@ -1,12 +1,18 @@
 package main
 
+import "time"
+
 type Response struct {
-	QuoteResponse QuoteResponse `json:"quoteResponse"`
-	Error         any           `json:"error"`
+	Results []Result `json:"body"`
+	Meta    Meta     `json:"meta"`
 }
 
-type QuoteResponse struct {
-	Results []Result `json:"result"`
+type Meta struct {
+	Copywrite     string    `json:"copywrite"`
+	ProcessedTime time.Time `json:"processedTime"`
+	Status        int       `json:"status"`
+	Symbol        string    `json:"symbol"`
+	Version       string    `json:"version"`
 }
 
 type Result struct {
