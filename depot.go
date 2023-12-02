@@ -10,12 +10,14 @@ import (
 )
 
 type Depot struct {
-	Stocks []Stock `yaml:"stocks" json:"stocks"`
+	Stocks  []Stock `yaml:"stocks" json:"stocks"`
+	Secrets Secrets `yaml:"secrets" json:"secrets"`
 }
 
 type Stock struct {
-	Symbol string  `yaml:"symbol" json:"symbol"`
-	Orders []Order `yaml:"orders" json:"orders"`
+	Symbol    string     `yaml:"symbol" json:"symbol"`
+	Orders    []Order    `yaml:"orders" json:"orders"`
+	Dividends []Dividend `yaml:"dividends" json:"dividends"`
 }
 
 type Order struct {
@@ -26,7 +28,18 @@ type Order struct {
 	Fee       float64   `yaml:"fee" json:"fee"`
 }
 
-func readDepot(filename string) (stocks map[string]Stock, param string, err error) {
+type Dividend struct {
+	Date   time.Time `yaml:"date" json:"date"`
+	Count  float64   `yaml:"count" json:"count"`
+	Amount float64   `yaml:"amount" json:"amount"`
+}
+
+type Secrets struct {
+	Key  string `yaml:"key" json:"key"`
+	Host string `yaml:"host" json:"host"`
+}
+
+func readDepot(filename string) (stocks map[string]Stock, param string, key string, host string, err error) {
 	var (
 		yml   []byte
 		depot = Depot{}
@@ -44,6 +57,8 @@ func readDepot(filename string) (stocks map[string]Stock, param string, err erro
 		symbols = append(symbols, stock.Symbol)
 	}
 	param = strings.Join(symbols, ",")
+	key = depot.Secrets.Key
+	host = depot.Secrets.Host
 	return
 }
 
