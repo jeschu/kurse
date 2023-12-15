@@ -16,5 +16,9 @@ dist: test clean
 	GOOS='linux'   GOARCH='arm64' go build -a -o 'dist/linux-arm64-kurse'   .
 	GOOS='windows' GOARCH='arm64' go build -a -o 'dist/windows-arm64-kurse'  .
 
+install:
+	@echo "installing to ${GOPATH}/kurse ..."
+	@go install
+
 edit:
 	code '/Users/jens/Library/Application Support/kurse/depot.yml'
