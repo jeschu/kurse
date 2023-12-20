@@ -8,7 +8,7 @@ import (
 
 const freecurrencyapiUrl = "https://api.freecurrencyapi.com/v1/latest?apikey=C84jJiZZ1WbWY2i1wKjZO8cEsqhz2SSN8KI1a5Le&base_currency=EUR"
 
-func fetchExchangeRates() (rates Rates, err error) {
+func fetchExchangeRates(rates *Rates) (err error) {
 	var (
 		rq *http.Request
 		rs *http.Response
@@ -20,7 +20,7 @@ func fetchExchangeRates() (rates Rates, err error) {
 		return
 	}
 	defer support.Close(rs.Body, "unable to close response body")
-	err = json.NewDecoder(rs.Body).Decode(&rates)
+	err = json.NewDecoder(rs.Body).Decode(rates)
 	return
 
 }

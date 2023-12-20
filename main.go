@@ -2,9 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"kurse/color"
 	"kurse/support"
 	"log"
 	"net/http"
+	"os"
 	"sort"
 	"sync"
 	"time"
@@ -28,15 +31,16 @@ func main() {
 	if depotFile, err = findDepot(); err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("loading depot from '%s'\n", depotFile)
+	_, _ = fmt.Fprintf(os.Stderr, color.InGray("loading depot from '%s'\n"), depotFile)
 	if stocks, param, key, host, err = readDepot(depotFile); err != nil {
 		log.Fatal(err)
 	}
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 
-	go fetchStocks(results, &wg, param, key, host) // go fetchStocksOffline(results, &wg, param, key, host)
-	go fetchRates(rates, &wg)
+	go fetchStocks(results, &wg, param, key, host)
+	// go fetchStocksOffline(results, &wg, param, key, host)
+	go fetchRates(&rates, &wg)
 	wg.Wait()
 
 	symbols := make([]string, 0, len(stocks))
@@ -65,7 +69,6 @@ func main() {
 			if cok {
 				rate = 1.0 / currency
 			}
-
 			for _, order := range stock.Orders {
 				orderCount += order.Count
 				orderPrice += order.Price
@@ -76,18 +79,23 @@ func main() {
 			for _, dividend := range stock.Dividends {
 				dividendAmount += dividend.Amount
 			}
-			out.Printf("%s (%s)\n", result.LongName, result.ShortName)
+			out.Printf(color.InYellow("%s (%s)\n"), result.LongName, result.ShortName)
 			value := orderCount * result.RegularMarketPrice
-			out.Printf("         Wert: %10.2f %s = %10.2f %s x %f\n", value, result.Currency, result.RegularMarketPrice, result.Currency, orderCount)
+			wert := fmt.Sprintf(" %10.2f %s = %10.2f %s x %f\n", value, result.Currency, result.RegularMarketPrice, result.Currency, orderCount)
+			if rate != 1.0 {
+				wert = color.InGray(wert)
+			}
+			out.Printf(color.InGray("            Wert:") + wert)
 			eurValue := value * rate
 			if rate != 1.0 {
-				out.Printf("               %10.2f EUR = %10.2f EUR x %f\n", eurValue, result.RegularMarketPrice*rate, orderCount)
+				out.Printf("                  %10.2f EUR = %10.2f EUR x %f\n", eurValue, result.RegularMarketPrice*rate, orderCount)
 			}
-			out.Printf("         Kauf: %10.2f EUR (%.2fx%.2f=%.2f + %.2f + %.2f)\n", orderBuy, orderCount, orderPrice/orderCount, orderPrice, orderProvision, orderFee)
-			out.Printf("    Dividende: %10.2f EUR\n", dividendAmount)
-			guvV := eurValue + dividendAmount - orderBuy
-			guvP := ((eurValue + dividendAmount) / orderBuy * 100) - 100
-			out.Printf("          GuV: %+10.2f EUR (%+.2f%%)\n", guvV, guvP)
+			out.Printf(color.InGray("            Kauf:")+" %10.2f EUR (%.2fx%.2f=%.2f + %.2f + %.2f)\n", orderBuy, orderCount, orderPrice/orderCount, orderPrice, orderProvision, orderFee)
+			guvV := eurValue - orderBuy
+			out.Println(color.ByAmount(guvV, fmt.Sprintf("             GuV: %+10.2f EUR (%+.2f%%)", guvV, (eurValue/orderBuy*100)-100)))
+			out.Printf(color.InGray("       Dividende: %10.2f EUR\n"), dividendAmount)
+			guvV = eurValue + dividendAmount - orderBuy
+			out.Println(color.ByAmount(guvV, fmt.Sprintf("  GuV inkl. Div.: %+10.2f EUR (%+.2f%%)", guvV, ((eurValue+dividendAmount)/orderBuy*100)-100)))
 			valSum += value * rate
 			buySum += orderBuy * rate
 			dividendSum += dividendAmount
@@ -95,12 +103,14 @@ func main() {
 		}
 	}
 
-	out.Println("Summe:")
-	out.Printf("            Wert: %10.2f %s\n", valSum, "EUR")
-	out.Printf("            Kauf: %10.2f %s\n", buySum, "EUR")
-	out.Printf("             GuV: %+10.2f %s (%+.2f%%)\n", valSum-buySum, "EUR", (valSum/buySum*100)-100)
-	out.Printf("       Dividende: %10.2f %s\n", dividendSum, "EUR")
-	out.Printf("  GuV inkl. Div.: %+10.2f %s (%+.2f%%)\n", valSum+dividendSum-buySum, "EUR", ((valSum+dividendSum)/buySum*100)-100)
+	out.Println(color.InYellow("Summe:"))
+	out.Printf("            Wert: %10.2f EUR\n", valSum)
+	out.Printf(color.InGray("            Kauf: %10.2f EUR\n"), buySum)
+	guvV := valSum - buySum
+	out.Println(color.ByAmount(guvV, fmt.Sprintf("             GuV: %+10.2f EUR (%+.2f%%)", guvV, (valSum/buySum*100)-100)))
+	out.Printf(color.InGray("       Dividende: %10.2f EUR\n"), dividendSum)
+	guvV = valSum + dividendSum - buySum
+	out.Println(color.ByAmount(guvV, fmt.Sprintf("  GuV inkl. Div.: %+10.2f EUR (%+.2f%%)", guvV, ((valSum+dividendSum)/buySum*100)-100)))
 
 }
 
@@ -136,9 +146,8 @@ var fetchStocks = func(results map[string]Result, wg *sync.WaitGroup, param stri
 	wg.Done()
 }
 
-var fetchRates = func(rates Rates, wg *sync.WaitGroup) {
-	var err error
-	if rates, err = fetchExchangeRates(); err != nil {
+var fetchRates = func(rates *Rates, wg *sync.WaitGroup) {
+	if err := fetchExchangeRates(rates); err != nil {
 		log.Fatal(err)
 	}
 	wg.Done()
