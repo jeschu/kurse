@@ -107,7 +107,7 @@ func main() {
 var fetchStocks = func(results map[string]Result, wg *sync.WaitGroup, param string, key string, host string) {
 	var (
 		err    error
-		client = http.Client{Timeout: 5 * time.Second}
+		client = http.Client{Timeout: 10 * time.Second}
 		rq     *http.Request
 		rs     *http.Response
 	)
