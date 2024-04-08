@@ -1,20 +1,20 @@
 default: dist
 
 build:
+	@echo ">> build <<"
 	go build -o 'dist/kurse' ./...
 
-test:
-	 go test -v ./...
-
 clean:
+	@echo ">> clean <<"
 	rm -rf dist
 
-dist: test clean
-	GOOS='darwin'  GOARCH='amd64' go build -a -o 'dist/darwin-amd64-kurse'  .
-	GOOS='linux'   GOARCH='amd64' go build -a -o 'dist/linux-amd64-kurse'   .
-	GOOS='linux'   GOARCH='arm'   go build -a -o 'dist/linux-arm-kurse'     .
-	GOOS='linux'   GOARCH='arm64' go build -a -o 'dist/linux-arm64-kurse'   .
-	GOOS='windows' GOARCH='arm64' go build -a -o 'dist/windows-arm64-kurse'  .
+ensuregox:
+	@echo ">> ensure gox <<"
+	@go install github.com/mitchellh/gox@latest
+
+dist: clean ensuregox
+	@echo ">> dist <<"
+	@gox -osarch='darwin/amd64 linux/amd64 linux/arm linux/arm64 windows/amd64' -output 'dist/kurse_{{.OS}}-{{.Arch}}' .
 
 edit:
 	code '/Users/jens/Library/Application Support/kurse/depot.yml'

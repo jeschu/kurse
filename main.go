@@ -1,10 +1,11 @@
 package main
 
 import (
-	"encoding/json"
-	"kurse/support"
-	"log"
-	"net/http"
+	"kurse/exchangerates"
+	"kurse/lang"
+	"kurse/portfolio"
+	"kurse/yahoo"
+	"os"
 	"sort"
 	"sync"
 	"time"
@@ -13,42 +14,24 @@ import (
 )
 
 func main() {
-	var (
-		err       error
-		stocks    map[string]Stock
-		param     string
-		depotFile string
-		out       = NewOut(language.German)
-		rates     Rates
-		results   = make(map[string]Result)
-		key       string
-		host      string
-	)
+	debug := isDebug()
+	out := NewOut(language.German)
 
-	if depotFile, err = findDepot(); err != nil {
-		log.Fatal(err)
-	}
-	log.Printf("loading depot from '%s'\n", depotFile)
-	if stocks, param, key, host, err = readDepot(depotFile); err != nil {
-		log.Fatal(err)
-	}
-	wg := sync.WaitGroup{}
-	wg.Add(2)
+	stocks, syms, secrets, err := portfolio.LoadPortfolio(debug)
+	lang.FatalOnError(err)
 
-	go fetchStocks(results, &wg, param, key, host) // go fetchStocksOffline(results, &wg, param, key, host)
-	go fetchRates(rates, &wg)
-	wg.Wait()
+	results, rates := asyncFetch(secrets, syms, debug)
 
 	symbols := make([]string, 0, len(stocks))
 	for symbol := range stocks {
-		symbols = append(symbols, symbol)
+		symbols = append(symbols, string(symbol))
 	}
 	sort.Strings(symbols)
 	valSum := float64(0)
 	buySum := float64(0)
 	dividendSum := float64(0)
 	for _, symbol := range symbols {
-		stock := stocks[symbol]
+		stock := stocks[portfolio.Symbol(symbol)]
 		result, ok := results[symbol]
 		if ok {
 			var (
@@ -104,42 +87,30 @@ func main() {
 
 }
 
-var fetchStocks = func(results map[string]Result, wg *sync.WaitGroup, param string, key string, host string) {
-	var (
-		err    error
-		client = http.Client{Timeout: 10 * time.Second}
-		rq     *http.Request
-		rs     *http.Response
-	)
-	if rq, err = http.NewRequest(http.MethodGet, "https://yahoo-finance15.p.rapidapi.com/api/v1/markets/stock/quotes?ticker="+param, nil); err != nil {
-		log.Fatal(err)
-	}
-	rq.Header.Add("X-RapidAPI-Key", key)
-	rq.Header.Add("X-RapidAPI-Host", host)
-	if rs, err = client.Do(rq); err != nil {
-		log.Fatal(err)
-	}
-	defer support.Close(rs.Body, "unable to close response body")
-	var response = Response{}
-	if err = json.NewDecoder(rs.Body).Decode(&response); err != nil {
-		log.Fatal(err)
-	}
-
-	rateLimitLimit := rs.Header.Get("x-ratelimit-limit")
-	rateLimitRemaining := rs.Header.Get("x-ratelimit-remaining")
-
-	log.Printf("fetch stocks => rate remaining/limit: %s/%s\n", rateLimitRemaining, rateLimitLimit)
-
-	for _, result := range response.Results {
-		results[result.Symbol] = result
-	}
-	wg.Done()
+func isDebug() bool {
+	debug, ok := os.LookupEnv("DEBUG")
+	return ok && debug == "true"
 }
 
-var fetchRates = func(rates Rates, wg *sync.WaitGroup) {
-	var err error
-	if rates, err = fetchExchangeRates(); err != nil {
-		log.Fatal(err)
-	}
-	wg.Done()
+func asyncFetch(secrets portfolio.Secrets, syms []portfolio.Symbol, offline bool) (yahoo.Results, exchangerates.Rates) {
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	var results yahoo.Results
+	go func(results *yahoo.Results, wg *sync.WaitGroup) {
+		client := yahoo.NewClient(secrets.YahooHost, secrets.YahooKey, 10*time.Second, offline)
+		rs, e := client.FetchStocks(syms)
+		lang.FatalOnError(e)
+		*results = rs
+		wg.Done()
+	}(&results, &wg)
+	var rates exchangerates.Rates
+	go func(rates *exchangerates.Rates, wg *sync.WaitGroup) {
+		client := exchangerates.NewClient(secrets.FreecurrencyApiKey, 10*time.Second, offline)
+		rs, e := client.FetchExchangeRates()
+		lang.FatalOnError(e)
+		*rates = rs
+		wg.Done()
+	}(&rates, &wg)
+	wg.Wait()
+	return results, rates
 }
