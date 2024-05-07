@@ -51,12 +51,11 @@ func colorize(color string, s any) string {
 	}
 }
 
-func InRed(s any) string    { return colorize(Red, s) }
-func InGreen(s any) string  { return colorize(Green, s) }
-func InYellow(s any) string { return colorize(Yellow, s) }
-func InGray(s any) string   { return colorize(Gray, s) }
+func InRed(s any) string   { return colorize(Red, s) }
+func InGreen(s any) string { return colorize(Green, s) }
 
-func ByAmount(amount float64, str string) string {
+func ByAmount(amount float64, format string) string {
+	str := fmt.Sprintf(format, amount)
 	if amount < 0 {
 		return InRed(str)
 	} else {
