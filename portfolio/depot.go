@@ -31,9 +31,10 @@ type Order struct {
 }
 
 type Dividend struct {
-	Date   time.Time `yaml:"date" json:"date"`
-	Count  float64   `yaml:"count" json:"count"`
-	Amount float64   `yaml:"amount" json:"amount"`
+	Date          time.Time `yaml:"date" json:"date"`
+	Count         float64   `yaml:"count" json:"count"`
+	Amount        float64   `yaml:"amount" json:"amount"`
+	Quellensteuer float64   `yaml:"quellensteuer" json:"quellensteuer"`
 }
 
 type Secrets struct {
