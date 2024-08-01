@@ -1,3 +1,5 @@
+GOPATH := $(shell go env GOPATH)
+
 default: dist
 
 build:
@@ -21,4 +23,4 @@ install:
 	@go install
 
 edit:
-	code '/Users/jens/Library/Application Support/kurse/depot.yml'
+	code '/Users/jens/Library/Application Support/kurse/portfolio.yml'
