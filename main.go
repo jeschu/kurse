@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"kurse/color"
 	"kurse/exchangerates"
 	"kurse/lang"
 	"kurse/portfolio"
@@ -30,17 +32,22 @@ func main() {
 	valSum := float64(0)
 	buySum := float64(0)
 	dividendSum := float64(0)
+	dividendSteuerSum := float64(0)
 	for _, symbol := range symbols {
 		stock := stocks[portfolio.Symbol(symbol)]
 		result, ok := results[symbol]
 		if ok {
 			var (
-				orderCount     float64 = 0
-				orderPrice     float64 = 0
-				orderProvision float64 = 0
-				orderFee       float64 = 0
-				orderBuy       float64 = 0
-				dividendAmount float64 = 0
+				orderCount                    float64 = 0
+				orderPrice                    float64 = 0
+				orderProvision                float64 = 0
+				orderFee                      float64 = 0
+				orderBuy                      float64 = 0
+				dividendAmount                float64 = 0
+				dividendQuellensteuer         float64 = 0
+				dividendKapitalertragsteuer   float64 = 0
+				dividendSolidaritaetszuschlag float64 = 0
+				dividendKirchensteuer         float64 = 0
 			)
 
 			var rate = 1.0
@@ -58,22 +65,43 @@ func main() {
 			}
 			for _, dividend := range stock.Dividends {
 				dividendAmount += dividend.Amount
+				dividendQuellensteuer += dividend.Quellensteuer
+				dividendKapitalertragsteuer += dividend.Kapitalertragsteuer
+				dividendSolidaritaetszuschlag += dividend.Solidaritaetszuschlag
+				dividendKirchensteuer += dividend.Kirchensteuer
 			}
-			out.Printf("%s (%s)\n", result.LongName, result.ShortName)
+
 			value := orderCount * result.RegularMarketPrice
-			out.Printf("         Wert: %10.2f %s = %10.2f %s x %f\n", value, result.Currency, result.RegularMarketPrice, result.Currency, orderCount)
 			eurValue := value * rate
+			guvV := eurValue + dividendAmount - orderBuy
+			if guvV >= 0 {
+				out.Print(color.GreenBackground, color.Black)
+			} else {
+				out.Print(color.RedBackground, color.Black)
+			}
+			var name string
+			if result.LongName == "" {
+				name = result.ShortName
+			} else {
+				name = fmt.Sprintf("%s (%s)", result.LongName, result.ShortName)
+			}
+			out.Printf("%s%s\n", name, color.Reset)
+			out.Printf("            Wert: %10.2f %s = %10.2f %s x %f\n", value, result.Currency, result.RegularMarketPrice, result.Currency, orderCount)
 			if rate != 1.0 {
 				out.Printf("               %10.2f EUR = %10.2f EUR x %f\n", eurValue, result.RegularMarketPrice*rate, orderCount)
 			}
-			out.Printf("         Kauf: %10.2f EUR (%.2fx%.2f=%.2f + %.2f + %.2f)\n", orderBuy, orderCount, orderPrice/orderCount, orderPrice, orderProvision, orderFee)
-			out.Printf("    Dividende: %10.2f EUR\n", dividendAmount)
-			guvV := eurValue + dividendAmount - orderBuy
+			out.Printf("            Kauf: %10.2f EUR (%.2fx%.2f=%.2f + %.2f + %.2f)\n", orderBuy, orderCount, orderPrice/orderCount, orderPrice, orderProvision, orderFee)
+			guvK := eurValue - orderBuy
+			guvKP := (eurValue / orderBuy * 100) - 100
+			out.Printf("             GuV: %s %s\n", color.ByAmount(guvK, "%+10.2f EUR"), color.ByAmount(guvKP, "(%+.2f%%)"))
+			dividendSteuer := dividendQuellensteuer + dividendKapitalertragsteuer + dividendSolidaritaetszuschlag + dividendKirchensteuer
+			out.Printf("       Dividende: %10.2f EUR (Brutto: %10.2f EUR | Steuer: %10.2f EUR)\n", dividendAmount, dividendAmount+dividendSteuer, dividendSteuer)
 			guvP := ((eurValue + dividendAmount) / orderBuy * 100) - 100
-			out.Printf("          GuV: %+10.2f EUR (%+.2f%%)\n", guvV, guvP)
+			out.Printf("  GuV inkl. Div.: %s %s\n", color.ByAmount(guvV, "%+10.2f EUR"), color.ByAmount(guvP, "(%+.2f%%)"))
 			valSum += value * rate
 			buySum += orderBuy * rate
 			dividendSum += dividendAmount
+			dividendSteuerSum += dividendSteuer
 			out.Println()
 		}
 	}
@@ -81,9 +109,9 @@ func main() {
 	out.Println("Summe:")
 	out.Printf("            Wert: %10.2f %s\n", valSum, "EUR")
 	out.Printf("            Kauf: %10.2f %s\n", buySum, "EUR")
-	out.Printf("             GuV: %+10.2f %s (%+.2f%%)\n", valSum-buySum, "EUR", (valSum/buySum*100)-100)
-	out.Printf("       Dividende: %10.2f %s\n", dividendSum, "EUR")
-	out.Printf("  GuV inkl. Div.: %+10.2f %s (%+.2f%%)\n", valSum+dividendSum-buySum, "EUR", ((valSum+dividendSum)/buySum*100)-100)
+	out.Printf("             GuV: %s %s\n", color.ByAmount(valSum-buySum, "%+10.2f EUR"), color.ByAmount(valSum/buySum*100-100, "(%+.2f%%)"))
+	out.Printf("       Dividende: %10.2[1]f EUR (Brutto: %10.2[2]f EUR | Steuer: %10.2[3]f EUR)\n", dividendSum, dividendSum+dividendSteuerSum, dividendSteuerSum)
+	out.Printf("  GuV inkl. Div.: %s %s\n", color.ByAmount(valSum+dividendSum-buySum, "%+10.2f EUR"), color.ByAmount(((valSum+dividendSum)/buySum*100)-100, "(%+.2f%%)"))
 
 }
 
