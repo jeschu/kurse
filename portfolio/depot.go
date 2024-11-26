@@ -9,6 +9,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type Stocks = map[Symbol]Stock
+
 type Depot struct {
 	Stocks  []Stock `yaml:"stocks" json:"stocks"`
 	Secrets Secrets `yaml:"secrets" json:"secrets"`
@@ -16,11 +18,15 @@ type Depot struct {
 
 type Stock struct {
 	Symbol    Symbol     `yaml:"symbol" json:"symbol"`
+	Name      string     `yaml:"name" json:"name"`
+	Wkn       string     `yaml:"wkn" json:"wkn"`
+	Isin      string     `yaml:"isin" json:"isin"`
 	Orders    []Order    `yaml:"orders" json:"orders"`
 	Dividends []Dividend `yaml:"dividends" json:"dividends"`
 }
 
 type Symbol string
+type Symbols []Symbol
 
 type Order struct {
 	Date      time.Time `yaml:"date" json:"date"`
@@ -46,10 +52,10 @@ type Secrets struct {
 	FreecurrencyApiKey string `yaml:"freecurrencyApiKey" json:"freecurrencyApiKey"`
 }
 
-func LoadPortfolio() (map[Symbol]Stock, []Symbol, Secrets, error) {
+func LoadPortfolio() (Stocks, Symbols, Secrets, error) {
 	var (
-		stocks   map[Symbol]Stock
-		symbols  []Symbol
+		stocks   Stocks
+		symbols  Symbols
 		err      error
 		yml      []byte
 		filename string
@@ -87,5 +93,26 @@ func portfolioConfigurationFile() (filename string, err error) {
 		filename = path.Join(dir, "portfolio.yml")
 		_, err = os.Stat(filename)
 	}
+	return
+}
+
+func (s *Stock) Stueck() float64 {
+	count := float64(0)
+	for _, order := range s.Orders {
+		count += order.Count
+	}
+	return count
+}
+
+func (s *Stock) Kaufkosten() (prices float64, fees float64, provisions float64, sum float64) {
+	prices = 0
+	fees = 0
+	provisions = 0
+	for _, order := range s.Orders {
+		prices += order.Price
+		fees += order.Fee
+		provisions += order.Provision
+	}
+	sum = prices + fees + provisions
 	return
 }

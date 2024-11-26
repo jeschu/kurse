@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
 	"golang.org/x/text/language"
 	"kurse/color"
 	"kurse/exchangerates"
@@ -9,24 +11,62 @@ import (
 	"kurse/portfolio"
 	"kurse/yahoo"
 	"os"
-	"sort"
 	"sync"
 )
 
 func main() {
+	var (
+		symbols portfolio.Symbols
+		secrets portfolio.Secrets
+		results yahoo.Results
+		stocks  portfolio.Stocks
+		rates   exchangerates.Rates
+		app     *tview.Application
+		err     error
+	)
 	useCache := isUseCache()
-	out := NewOut(language.German)
 
-	stocks, syms, secrets, err := portfolio.LoadPortfolio()
+	stocks, symbols, secrets, err = portfolio.LoadPortfolio()
+	lang.FatalOnError(err)
+	results, rates = asyncFetch(secrets, symbols, useCache)
+
+	symList, entries, nameMaxLen := prepare(stocks, results)
+
+	view := NewView()
+
+	symListSelect := func(index int, mainText string, secondaryText string, shortcut rune) {
+		updateView(view, entries[mainText])
+	}
+	symList.SetChangedFunc(symListSelect)
+
+	grid := tview.NewGrid().SetColumns(nameMaxLen+2, 0)
+	grid.AddItem(symList, 0, 0, 1, 1, 0, 0, true)
+	grid.AddItem(view.view, 0, 1, 1, 1, 0, 0, false)
+
+	mainText, _ := symList.GetItemText(0)
+	updateView(view, entries[mainText])
+
+	app = tview.NewApplication().
+		SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+			switch event.Key() {
+			case tcell.KeyESC:
+				app.Stop()
+			case tcell.KeyCtrlC:
+				app.Stop()
+			default:
+
+			}
+			return event
+		})
+	err = app.SetRoot(grid, true).EnableMouse(true).Run()
 	lang.FatalOnError(err)
 
-	results, rates := asyncFetch(secrets, syms, useCache)
+	_ = rates
+	_ = entries
+}
 
-	symbols := make([]string, 0, len(stocks))
-	for symbol := range stocks {
-		symbols = append(symbols, string(symbol))
-	}
-	sort.Strings(symbols)
+func bla(symbols []string, results yahoo.Results, stocks map[portfolio.Symbol]portfolio.Stock, rates exchangerates.Rates) {
+	out := NewOut(language.German)
 	valSum := float64(0)
 	buySum := float64(0)
 	dividendSum := float64(0)
