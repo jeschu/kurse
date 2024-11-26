@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"golang.org/x/text/language"
 	"kurse/color"
 	"kurse/exchangerates"
 	"kurse/lang"
@@ -10,19 +11,16 @@ import (
 	"os"
 	"sort"
 	"sync"
-	"time"
-
-	"golang.org/x/text/language"
 )
 
 func main() {
-	debug := isDebug()
+	useCache := isUseCache()
 	out := NewOut(language.German)
 
-	stocks, syms, secrets, err := portfolio.LoadPortfolio(debug)
+	stocks, syms, secrets, err := portfolio.LoadPortfolio()
 	lang.FatalOnError(err)
 
-	results, rates := asyncFetch(secrets, syms, debug)
+	results, rates := asyncFetch(secrets, syms, useCache)
 
 	symbols := make([]string, 0, len(stocks))
 	for symbol := range stocks {
@@ -115,30 +113,28 @@ func main() {
 
 }
 
-func isDebug() bool {
-	debug, ok := os.LookupEnv("DEBUG")
-	return ok && debug == "true"
-}
-
-func asyncFetch(secrets portfolio.Secrets, syms []portfolio.Symbol, offline bool) (yahoo.Results, exchangerates.Rates) {
+func asyncFetch(secrets portfolio.Secrets, syms []portfolio.Symbol, cached bool) (yahoo.Results, exchangerates.Rates) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	var results yahoo.Results
 	go func(results *yahoo.Results, wg *sync.WaitGroup) {
-		client := yahoo.NewClient(secrets.YahooHost, secrets.YahooKey, 10*time.Second, offline)
-		rs, e := client.FetchStocks(syms)
-		lang.FatalOnError(e)
-		*results = rs
+		*results = yahoo.FetchStocks(syms, secrets, cached)
 		wg.Done()
 	}(&results, &wg)
 	var rates exchangerates.Rates
 	go func(rates *exchangerates.Rates, wg *sync.WaitGroup) {
-		client := exchangerates.NewClient(secrets.FreecurrencyApiKey, 10*time.Second, offline)
-		rs, e := client.FetchExchangeRates()
-		lang.FatalOnError(e)
-		*rates = rs
+		*rates = exchangerates.FetchExchangeRates(secrets, cached)
 		wg.Done()
 	}(&rates, &wg)
 	wg.Wait()
 	return results, rates
+}
+
+func isUseCache() bool {
+	cache, ok := os.LookupEnv("CACHE")
+	if ok && cache == "false" {
+		return false
+	} else {
+		return true
+	}
 }
