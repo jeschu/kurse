@@ -116,3 +116,19 @@ func (s *Stock) Kaufkosten() (prices float64, fees float64, provisions float64, 
 	sum = prices + fees + provisions
 	return
 }
+
+func (s *Stock) Dividenden() (amount float64, quellensteuer float64, kapitalertragsteuer float64, solidaritaetszuschlag float64, kirchensteuer float64) {
+	amount = 0
+	quellensteuer = 0
+	kapitalertragsteuer = 0
+	solidaritaetszuschlag = 0
+	kirchensteuer = 0
+	for _, dividend := range s.Dividends {
+		amount += dividend.Amount
+		quellensteuer += dividend.Quellensteuer
+		kapitalertragsteuer += dividend.Kapitalertragsteuer
+		solidaritaetszuschlag += dividend.Solidaritaetszuschlag
+		kirchensteuer += dividend.Kirchensteuer
+	}
+	return
+}
